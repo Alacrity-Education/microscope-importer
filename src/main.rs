@@ -17,7 +17,8 @@ can be imported at the same time.
 Photos (jpg, jpeg, png) go to ~/Pictures/Microscope. Videos (mp4) are copied
 to ~/Videos/Microscope/.originalframes/<card>/ and the camera's 1-20 minute
 segments are stitched losslessly into whole recordings in ~/Videos/Microscope.
-The card is unmounted as soon as everything is copied.
+Once everything is copied and verified by checksum, the imported files are
+deleted from the card and it is unmounted.
 
 ENVIRONMENT:
     MICROSCOPE_IMPORTER_VIDEOS     videos destination  (default ~/Videos/Microscope)

@@ -236,7 +236,11 @@ fn stats_line(s: &mut JobState) -> Line<'static> {
     };
     let copying = matches!(
         s.phase,
-        Phase::Mounting | Phase::Scanning | Phase::CopyingPhotos | Phase::CopyingVideos
+        Phase::Mounting
+            | Phase::Scanning
+            | Phase::CopyingPhotos
+            | Phase::CopyingVideos
+            | Phase::Clearing
     );
     let (left, left_label) = if copying || s.phase == Phase::Done {
         (s.copy_total.saturating_sub(s.copied), " left to copy")
@@ -318,6 +322,16 @@ fn view(e: &Entry) -> View {
             ],
             Color::Cyan,
         ),
+        Phase::Clearing => (
+            vec![
+                bold(
+                    "🗑 Deleting imported files from the SD card…".into(),
+                    Color::Yellow,
+                ),
+                dim(format!("  {}", s.detail)),
+            ],
+            Color::Yellow,
+        ),
         Phase::Unmounting => (
             vec![bold("⏏ Unmounting…".into(), Color::Yellow)],
             Color::Yellow,
@@ -375,6 +389,17 @@ fn view(e: &Entry) -> View {
         info.push(Span::styled(
             format!("   {} already imported", s.skipped),
             Style::new().dim(),
+        ));
+    }
+    if let Some(e) = &s.clear_error {
+        info.push(Span::styled(
+            format!("   ⚠ card not cleared: {e}"),
+            Style::new().fg(Color::Red),
+        ));
+    } else if s.cleared > 0 {
+        info.push(Span::styled(
+            format!("   🗑 {} deleted from card", s.cleared),
+            Style::new().fg(Color::Yellow),
         ));
     }
     if s.phase == Phase::Done {

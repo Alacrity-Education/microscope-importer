@@ -70,8 +70,11 @@ reader while its videos are still being stitched:
   note naming the file, so the recording keeps its length and the rest of it
   plays. The damaged file is placed next to the recording, unchanged.
 - Keep every original in a hidden folder, never copy a file twice (checksums
-  decide on a name collision), never
-  stitch a video twice, never delete anything from the card.
+  decide on a name collision), never stitch a video twice.
+- Leave the card empty for the next session: once everything is copied and
+  verified, the imported files are deleted from it. Nothing is deleted
+  before every file's copy has been read back from disk and matched by
+  checksum, and files that are not photos or videos stay.
 - Estimate honestly: the progress bar and the ETA cover copying *and*
   stitching, with per-stage speeds that are measured while the import runs
   and remembered for the next one.
@@ -118,17 +121,27 @@ First run:
 3. **Copy the photos** to `~/Pictures/Microscope`.
 4. **Copy the videos** to `~/Videos/Microscope/.originalframes/<card>/`, where
    `<card>` is the card's filesystem UUID.
-5. **Unmount** the card.
-6. **Check** every video by decoding it once with ffmpeg.
-7. **Stitch** the recordings into `~/Videos/Microscope`.
+5. **Clear** the card: the imported files are deleted from it.
+6. **Unmount** the card.
+7. **Check** every video by decoding it once with ffmpeg.
+8. **Stitch** the recordings into `~/Videos/Microscope`.
 
-Every file is copied through a hidden `.part` name, flushed to disk and only
-then given its real name, and it keeps the card's modification time. When a
+Every file is copied through a hidden `.part` name and hashed (BLAKE3) on
+the way. Once it is flushed to disk it is dropped from the page cache and read
+back; only a copy whose checksum matches gets its real name, and it keeps the
+card's modification time. When a
 file of the same name is already in the destination, checksums (BLAKE3)
 decide: the same file is skipped, a different one is imported as
 `IMG_0001_1.JPG` (then `_2`, `_3`...). Files of different sizes are known to
 differ without hashing. Before anything is copied the free space on the
 destination is checked.
+
+The card is cleared only after *every* file was copied and verified (or found
+to be in the library already, by checksum); a failed or cancelled import
+deletes nothing. Only the imported photos and videos are deleted - folders
+and any other files on the card stay. A card that cannot be written to (the
+write-protect switch) is reported in its box, and the import still
+completes.
 
 ### Stitching
 
@@ -201,6 +214,7 @@ One screen: a box per card, the selected one with a thick cyan border.
 | --- | --- |
 | `● Ready` | press Enter to import |
 | `⇣ Copying photos 3/12`, `⇣ Copying videos 37/157` | copying off the card |
+| `🗑 Deleting imported files from the SD card…` | everything is copied and verified; clearing the card |
 | `✔ Can remove SD card  Stitching videos…` | the card is unmounted, stitching runs from the copies |
 | `Removed, Stitching videos...` | the card was taken out; the box stays until stitching is done |
 | `✔ Done` | finished; a removed card's box disappears after 15 s |
@@ -236,7 +250,7 @@ To try it without a card:
     MICROSCOPE_IMPORTER_LOOP=1 MICROSCOPE_IMPORTER_VIDEOS=/tmp/v MICROSCOPE_IMPORTER_PICTURES=/tmp/p microscope-importer
     udisksctl loop-delete -b /dev/loopN         # "takes the card out"
 
-This project is built **entirely** with AI agents. It serves to automate a time-consuming process that we would have to do manually. Being a low-risk project (the originals are always kept, and the card is never written to), we have taken the liberty to benchmark LLM's capabilities to write helper tools with a given specification and very minimal technical guidance.
+This project is built **entirely** with AI agents. It serves to automate a time-consuming process that we would have to do manually. Being a low-risk project (the originals are always kept, and nothing leaves the card before its copy is verified), we have taken the liberty to benchmark LLM's capabilities to write helper tools with a given specification and very minimal technical guidance.
 Rust was chosen as a language whose compiler helps verify what the LLM does without many repetitive write-test-debug cycles.
 
 ## Contributing

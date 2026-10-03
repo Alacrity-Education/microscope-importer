@@ -31,6 +31,8 @@ pub enum Phase {
     Scanning,
     CopyingPhotos,
     CopyingVideos,
+    /// Deleting the imported files from the card.
+    Clearing,
     Unmounting,
     Stitching,
     Done,
@@ -64,6 +66,9 @@ pub struct JobState {
     pub skipped: usize,
     pub unmounted: bool,
     pub unmount_error: Option<String>,
+    /// Files deleted from the card after they were imported.
+    pub cleared: usize,
+    pub clear_error: Option<String>,
     pub error: Option<String>,
     pub recordings: usize,
     pub damaged: Vec<String>,
@@ -147,6 +152,8 @@ pub fn start(device: Device, paths: Paths, cal: Arc<Mutex<Calibration>>) -> Arc<
             skipped: 0,
             unmounted: false,
             unmount_error: None,
+            cleared: 0,
+            clear_error: None,
             error: None,
             recordings: 0,
             damaged: Vec::new(),
@@ -367,8 +374,11 @@ fn check_space(needs: &[(&Path, u64)]) -> Result<()> {
     Ok(())
 }
 
-/// Copy one file through a hidden ".part" name, flushing it to disk before
-/// it gets its real name, and keep the card's modification time.
+/// Copy one file through a hidden ".part" name and keep the card's
+/// modification time. The data is hashed on the way; once it is flushed to
+/// disk it is dropped from the page cache and read back, and only a copy
+/// whose checksum matches gets its real name - the card's file may be
+/// deleted afterwards.
 fn copy_file(job: &Job, item: &Source, dst: &Path, buf: &mut [u8]) -> Result<()> {
     let dir = dst.parent().unwrap();
     let part = dir.join(format!(
@@ -381,6 +391,7 @@ fn copy_file(job: &Job, item: &Source, dst: &Path, buf: &mut [u8]) -> Result<()>
         let mut out =
             File::create(&part).with_context(|| format!("cannot create {}", part.display()))?;
         let mut copied = 0u64;
+        let mut hasher = blake3::Hasher::new();
         loop {
             job.check_cancel()?;
             let n = src
@@ -389,6 +400,7 @@ fn copy_file(job: &Job, item: &Source, dst: &Path, buf: &mut [u8]) -> Result<()>
             if n == 0 {
                 break;
             }
+            hasher.update(&buf[..n]);
             out.write_all(&buf[..n])
                 .with_context(|| format!("cannot write {}", part.display()))?;
             copied += n as u64;
@@ -404,6 +416,11 @@ fn copy_file(job: &Job, item: &Source, dst: &Path, buf: &mut [u8]) -> Result<()>
             let _ = out.set_modified(t);
         }
         out.sync_all()?;
+        drop_cache(&out);
+        drop(out);
+        if checksum(&part, job, buf, |_| {})? != hasher.finalize() {
+            bail!("verification of {} failed: the copy differs", dst.display());
+        }
         fs::rename(&part, dst)?;
         Ok(())
     })();
@@ -411,6 +428,36 @@ fn copy_file(job: &Job, item: &Source, dst: &Path, buf: &mut [u8]) -> Result<()>
         let _ = fs::remove_file(&part);
     }
     result
+}
+
+/// Ask the kernel to forget the cached pages of a file that was just
+/// flushed, so reading it back reads what is on the disk.
+fn drop_cache(file: &File) {
+    use std::os::fd::AsRawFd;
+    unsafe {
+        libc::posix_fadvise(file.as_raw_fd(), 0, 0, libc::POSIX_FADV_DONTNEED);
+    }
+}
+
+/// Delete imported files from the card. Returns how many were deleted and
+/// the first error, if any (a write-protected card is not a failed import).
+fn clear_card(job: &Job, files: &[PathBuf]) -> (usize, Option<String>) {
+    let mut deleted = 0;
+    let mut first_error = None;
+    for (i, f) in files.iter().enumerate() {
+        job.update(|s| s.detail = format!("{}/{}", i + 1, files.len()));
+        match fs::remove_file(f) {
+            Ok(()) => deleted += 1,
+            Err(e) => {
+                log(format!("cannot delete {}: {e}", f.display()));
+                // Short enough for the card's box: "Read-only file system".
+                let reason = e.to_string();
+                let reason = reason.split(" (os error").next().unwrap_or("").to_owned();
+                first_error.get_or_insert(reason);
+            }
+        }
+    }
+    (deleted, first_error)
 }
 
 fn run(job: &Job, paths: &Paths) -> Result<()> {
@@ -463,6 +510,8 @@ fn run(job: &Job, paths: &Paths) -> Result<()> {
     let mut buf = vec![0u8; COPY_BUFFER];
     let (mut copied, mut skipped) = (0, 0);
     let mut video_files = Vec::new();
+    // Card files whose content is now verified to be in the library.
+    let mut imported = Vec::new();
     for (phase, items, dest, is_photo) in [
         (Phase::CopyingPhotos, &photos, &paths.pictures, true),
         (Phase::CopyingVideos, &videos, &originals, false),
@@ -492,6 +541,7 @@ fn run(job: &Job, paths: &Paths) -> Result<()> {
                     s.videos.1 = i + 1;
                 }
             });
+            imported.push(item.src.clone());
             if !is_photo {
                 video_files.push(path);
             }
@@ -520,6 +570,21 @@ fn run(job: &Job, paths: &Paths) -> Result<()> {
     job.update(|s| {
         s.est.set_total(StageKind::Check, to_stitch_bytes as f64);
         s.est.set_total(StageKind::Join, to_stitch_bytes as f64);
+    });
+
+    // Everything is safely in the library: clear the card for the next
+    // session. Only the imported files go; anything else on it stays.
+    job.set_phase(Phase::Clearing, "");
+    job.update(|s| s.est.enter(None));
+    let (cleared, clear_error) = clear_card(job, &imported);
+    log(format!(
+        "{}: deleted {cleared} of {} imported files from the card",
+        dev.dev,
+        imported.len()
+    ));
+    job.update(|s| {
+        s.cleared = cleared;
+        s.clear_error = clear_error;
     });
 
     // The card is not needed any more.
@@ -573,6 +638,8 @@ mod tests {
                 skipped: 0,
                 unmounted: false,
                 unmount_error: None,
+                cleared: 0,
+                clear_error: None,
                 error: None,
                 recordings: 0,
                 damaged: Vec::new(),
@@ -633,6 +700,26 @@ mod tests {
             panic!("expected a copy")
         };
         assert_eq!(p, dest.join("IMG_0001_2.JPG"));
+    }
+
+    #[test]
+    fn clearing_deletes_only_the_imported_files() {
+        let tmp = tempfile::tempdir().unwrap();
+        let card = tmp.path();
+        for f in ["a.JPG", "b.MP4", "keep.txt"] {
+            fs::write(card.join(f), b"x").unwrap();
+        }
+        let job = job();
+        let files = vec![
+            card.join("a.JPG"),
+            card.join("b.MP4"),
+            card.join("gone.MP4"),
+        ];
+        let (deleted, error) = clear_card(&job, &files);
+        assert_eq!(deleted, 2);
+        assert_eq!(error.as_deref(), Some("No such file or directory"));
+        assert!(!card.join("a.JPG").exists());
+        assert!(card.join("keep.txt").exists());
     }
 
     #[test]
