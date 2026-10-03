@@ -1,0 +1,29 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: microscope-importer
+Upstream-Contact: Alacrity-Education <https://github.com/Alacrity-Education>
+Source: https://github.com/Alacrity-Education/microscope-importer
+Comment: microscope-importer is a Rust program and the binary in this package
+ links the crates listed in Cargo.lock in statically, so the shipped
+ /usr/bin/microscope-importer is a combined work that also carries their code.
+ None of them is distributed as source here; the exact set and versions are
+ recorded in Cargo.lock in the source tree, and "cargo metadata" over that
+ tree prints the licence of each one. They are under permissive licences
+ (mostly "MIT OR Apache-2.0"), all compatible with the AGPL-3.0-or-later of
+ the program itself, which is the licence the combined binary is distributed
+ under.
+
+Files: *
+Copyright: 2026 Alacrity-Education
+License: AGPL-3.0-or-later
+ This program is free software: you can redistribute it and/or modify it
+ under the terms of the GNU Affero General Public License as published by the
+ Free Software Foundation, either version 3 of the License, or (at your
+ option) any later version.
+ .
+ This program is distributed in the hope that it will be useful, but WITHOUT
+ ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License
+ for more details.
+ .
+ You should have received a copy of the GNU Affero General Public License
+ along with this program. If not, see <https://www.gnu.org/licenses/>.

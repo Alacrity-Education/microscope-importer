@@ -1,0 +1,40 @@
+Source: microscope-importer
+Section: video
+Priority: optional
+Maintainer: lucaci32u4 <lucaci32u4@gmail.com>
+# Only debhelper is listed. The Rust toolchain is not taken from the archive:
+# trixie ships rustc 1.85 but the crate is built against whatever stable
+# rustup installs in the release container, and an archive-wide build-dep on
+# "cargo" would pin the package to one release's toolchain. Build with
+# "dpkg-buildpackage -d" so dpkg-checkbuilddeps does not object to a cargo
+# that is on PATH but not dpkg-installed; see README.Debian.
+Build-Depends: debhelper-compat (= 13)
+Standards-Version: 4.7.0
+Rules-Requires-Root: no
+Homepage: https://github.com/Alacrity-Education/microscope-importer
+
+Package: microscope-importer
+Architecture: any
+Depends: ${shlibs:Depends},
+         ${misc:Depends},
+         ffmpeg,
+         udisks2,
+         util-linux,
+         fontconfig
+Recommends: fonts-dejavu-core
+Description: import footage from microscope SD cards and stitch video segments
+ Microscope Importer is a terminal application that lists every SD card
+ attached to the computer, mounted or not. Selecting a card imports all of
+ its photos (jpg, jpeg, png) into ~/Pictures/Microscope and its videos (mp4)
+ into ~/Videos/Microscope; several cards can be imported at the same time,
+ each with its own progress bar, transfer rate and time estimate.
+ .
+ USB microscopes record in fixed segments of 1, 2, 3, 5, 10, 15 or 20
+ minutes. The importer detects which segments belong to one recording (file
+ counter, timestamps and stream parameters) and joins them back losslessly
+ with ffmpeg, as a stream copy. Damaged segments are replaced by black video
+ of the same length with a note naming the file, and the originals are kept
+ in a hidden folder.
+ .
+ The card is unmounted as soon as everything is copied, so it can be taken
+ out while the videos are still being stitched.

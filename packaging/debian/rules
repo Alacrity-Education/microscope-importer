@@ -1,0 +1,37 @@
+#!/usr/bin/make -f
+
+# microscope-importer is a Cargo crate. debhelper has no Rust build system of
+# its own here (dh-cargo wants the whole crate dependency tree packaged in the
+# archive), so every auto_* step is driven by plain cargo calls.
+
+# Keep cargo inside the build tree: without this the registry cache, the git
+# checkouts and the credentials file land in $$HOME, which a package build is
+# not allowed to touch. debian/cargo is removed again by the clean target.
+export CARGO_HOME = $(CURDIR)/debian/cargo
+
+%:
+	dh $@
+
+# --locked keeps Cargo.lock authoritative: the build resolves to exactly the
+# versions the crate was tested against and fails instead of silently
+# updating them.
+override_dh_auto_build:
+	cargo build --release --locked
+
+override_dh_auto_test:
+ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))
+	# The end-to-end stitching tests skip themselves without ffmpeg.
+	cargo test --release --locked
+endif
+
+override_dh_auto_install:
+	install -D -m 0755 target/release/microscope-importer \
+		debian/microscope-importer/usr/bin/microscope-importer
+	install -D -m 0644 packaging/microscope-importer.desktop \
+		debian/microscope-importer/usr/share/applications/microscope-importer.desktop
+
+override_dh_auto_clean:
+	# Guarded: "debian/rules clean" has to work on a tree that was never
+	# built, and on a machine without a Rust toolchain at all.
+	if command -v cargo >/dev/null 2>&1 && [ -d target ]; then cargo clean; fi
+	rm -rf $(CURDIR)/debian/cargo

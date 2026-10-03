@@ -1,0 +1,26 @@
+[package]
+name = "microscope-importer"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.85"
+description = "Import photos and videos from microscope SD cards and stitch the split video segments back together"
+license = "AGPL-3.0-or-later"
+repository = "https://github.com/Alacrity-Education/microscope-importer"
+readme = "README.md"
+keywords = ["microscope", "sd-card", "ffmpeg", "import", "tui"]
+categories = ["command-line-utilities", "multimedia::video"]
+
+[dependencies]
+ratatui = "0.30"
+anyhow = "1"
+serde_json = "1"
+libc = "0.2"
+blake3 = "1"
+
+[dev-dependencies]
+tempfile = "3"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = true

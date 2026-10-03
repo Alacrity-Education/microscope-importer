@@ -1,0 +1,29 @@
+microscope-importer for Debian
+==============================
+
+The .deb carries one binary, /usr/bin/microscope-importer, with every crate
+it uses linked in statically, plus a desktop entry that opens it in a
+terminal. At run time it drives ffmpeg/ffprobe, udisksctl, lsblk and
+fc-match, which is why ffmpeg, udisks2, util-linux and fontconfig are
+dependencies.
+
+Building
+--------
+
+The source is native (debian/source/format is "3.0 (native)"): the Debian
+packaging lives in the upstream git tree in packaging/debian next to the Arch
+PKGBUILD. dpkg-buildpackage only looks at ./debian, so stage a copy first:
+
+  cp -a packaging/debian debian
+  dpkg-buildpackage -us -uc -b -d
+
+Building needs cargo and rustc 1.85 or newer on the PATH. They are not listed
+in Build-Depends because the toolchain is taken from rustup rather than from
+the archive; -d tells dpkg-buildpackage to skip the build-dependency check
+that would otherwise fail over a cargo that is not dpkg-installed.
+
+cargo is pointed at debian/cargo for its registry cache (CARGO_HOME in
+debian/rules), so a build writes nothing outside the source tree. The build
+downloads the crates named in Cargo.lock, so it needs network access.
+
+ -- lucaci32u4 <lucaci32u4@gmail.com>

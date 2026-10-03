@@ -1,0 +1,56 @@
+# Maintainer: lucaci32u4 <lucaci32u4@gmail.com>
+
+pkgname=microscope-importer
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="Import photos and videos from microscope SD cards and stitch the split video segments"
+arch=(x86_64)
+url="https://github.com/Alacrity-Education/microscope-importer"
+license=(AGPL-3.0-or-later)
+# The Rust crates are linked in statically; at run time the binary needs the
+# C runtime plus the programs it drives: ffmpeg/ffprobe (checking, black
+# filler with libx264 + drawtext, stream-copy joining), udisksctl (mounting
+# and unmounting as a normal user), lsblk (finding cards) and fc-match (the
+# font for the note on the black filler).
+depends=(gcc-libs glibc ffmpeg udisks2 util-linux fontconfig)
+makedepends=(cargo git)
+# The end-to-end stitching tests generate small clips with ffmpeg; without
+# it they skip themselves.
+checkdepends=(ffmpeg)
+# The release profile in Cargo.toml already strips the binary, so there are no
+# debug symbols for makepkg to split out. Say so explicitly: the archlinux
+# container image builds with 'debug' in OPTIONS and would otherwise try to
+# produce a second, empty -debug package next to the real one.
+options=(!debug)
+# The tarball is produced next to this PKGBUILD by the release workflow with
+#   git archive --prefix=$pkgname-$pkgver/ -o $pkgname-$pkgver.tar.gz HEAD
+# so it is a local source, not a download; SKIP is fine for a checksum here.
+source=("$pkgname-$pkgver.tar.gz")
+sha256sums=('SKIP')
+
+prepare() {
+  cd "$pkgname-$pkgver"
+  export RUSTUP_TOOLCHAIN=stable
+  cargo fetch --locked --target "$(rustc -vV | sed -n 's/host: //p')"
+}
+
+build() {
+  cd "$pkgname-$pkgver"
+  export RUSTUP_TOOLCHAIN=stable
+  export CARGO_TARGET_DIR=target
+  cargo build --frozen --release --all-features
+}
+
+check() {
+  cd "$pkgname-$pkgver"
+  export RUSTUP_TOOLCHAIN=stable
+  cargo test --frozen --release
+}
+
+package() {
+  cd "$pkgname-$pkgver"
+  install -Dm0755 -t "$pkgdir/usr/bin/" "target/release/$pkgname"
+  install -Dm0644 -t "$pkgdir/usr/share/licenses/$pkgname/" LICENSE
+  install -Dm0644 -t "$pkgdir/usr/share/doc/$pkgname/" README.md
+  install -Dm0644 -t "$pkgdir/usr/share/applications/" "packaging/$pkgname.desktop"
+}

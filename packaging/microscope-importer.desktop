@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Microscope Importer
+Comment=Import photos and videos from microscope SD cards
+Exec=microscope-importer
+Terminal=true
+Icon=media-flash
+Categories=AudioVideo;Video;Utility;
+Keywords=microscope;sd;card;import;video;
