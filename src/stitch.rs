@@ -26,7 +26,7 @@ use std::io::{BufRead, BufReader, Read};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
-use std::sync::{Mutex, OnceLock};
+use std::sync::Mutex;
 
 use anyhow::{bail, Context, Result};
 use serde_json::Value;
@@ -402,21 +402,13 @@ fn black_supported(clip: &Clip) -> bool {
     p.video["codec_name"] == "h264" && p.audio.as_ref().is_none_or(|a| a["codec_name"] == "aac")
 }
 
-fn font_option() -> &'static str {
-    static FONT: OnceLock<String> = OnceLock::new();
-    FONT.get_or_init(|| {
-        let found = Command::new("fc-match")
-            .args(["-f", "%{file}", "sans:bold"])
-            .output()
-            .ok()
-            .filter(|o| o.status.success())
-            .map(|o| String::from_utf8_lossy(&o.stdout).into_owned())
-            .filter(|f| Path::new(f).is_file());
-        match found {
-            Some(f) => format!("fontfile='{}'", f.replace('\'', "")),
-            None => "font='Sans'".to_owned(),
-        }
-    })
+/// Font of the note on the black filler, bundled so the note renders the
+/// same everywhere, also on systems without any fonts installed.
+const NOTE_FONT: &[u8] = include_bytes!("../assets/DejaVuSans-Bold.ttf");
+
+/// A path as a single-quoted filtergraph option value.
+fn filter_quote(path: &Path) -> String {
+    format!("'{}'", path.to_string_lossy().replace('\'', r"'\''"))
 }
 
 /// Encode black video + silence matching `clip`, with the note over it.
@@ -441,6 +433,8 @@ fn make_black(
         .map_or("90000", |(_, d)| d)
         .to_owned();
 
+    let font = scratch.join("note.ttf");
+    fs::write(&font, NOTE_FONT)?;
     let mut filters = Vec::new();
     for (i, line) in [BLACK_NOTE, clip.name.as_str()].iter().enumerate() {
         let textfile = scratch.join(format!("note{i}.txt"));
@@ -451,9 +445,9 @@ fn make_black(
             "h/2+text_h*0.3"
         };
         filters.push(format!(
-            "drawtext={}:textfile='{}':fontcolor=white:fontsize=h/18:x=(w-text_w)/2:y={y}",
-            font_option(),
-            textfile.display()
+            "drawtext=fontfile={}:textfile={}:fontcolor=white:fontsize=h/18:x=(w-text_w)/2:y={y}",
+            filter_quote(&font),
+            filter_quote(&textfile)
         ));
     }
 

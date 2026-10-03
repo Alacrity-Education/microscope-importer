@@ -10,9 +10,9 @@ license=(AGPL-3.0-or-later)
 # The Rust crates are linked in statically; at run time the binary needs the
 # C runtime plus the programs it drives: ffmpeg/ffprobe (checking, black
 # filler with libx264 + drawtext, stream-copy joining), udisksctl (mounting
-# and unmounting as a normal user), lsblk (finding cards) and fc-match (the
-# font for the note on the black filler).
-depends=(gcc-libs glibc ffmpeg udisks2 util-linux fontconfig)
+# and unmounting as a normal user) and lsblk (finding cards). The font of
+# the note on the black filler is compiled in.
+depends=(gcc-libs glibc ffmpeg udisks2 util-linux)
 makedepends=(cargo git)
 # The end-to-end stitching tests generate small clips with ffmpeg; without
 # it they skip themselves.
@@ -50,7 +50,7 @@ check() {
 package() {
   cd "$pkgname-$pkgver"
   install -Dm0755 -t "$pkgdir/usr/bin/" "target/release/$pkgname"
-  install -Dm0644 -t "$pkgdir/usr/share/licenses/$pkgname/" LICENSE
+  install -Dm0644 -t "$pkgdir/usr/share/licenses/$pkgname/" LICENSE assets/DejaVuSans-LICENSE.txt
   install -Dm0644 -t "$pkgdir/usr/share/doc/$pkgname/" README.md
   install -Dm0644 -t "$pkgdir/usr/share/applications/" "packaging/$pkgname.desktop"
 }

@@ -88,8 +88,9 @@ On Debian 13 and Ubuntu 24.04 or newer (amd64):
 
 The package pulls in what the program drives at run time: `ffmpeg` (with
 libx264 and drawtext, as both distributions ship it), `udisks2` for mounting
-and unmounting as a normal user, `util-linux` for `lsblk` and `fontconfig` for
-the font of the note on black filler. Linux only.
+and unmounting as a normal user and `util-linux` for `lsblk`. The font of the
+note on black filler (DejaVu Sans Bold, [licence](assets/DejaVuSans-LICENSE.txt))
+is compiled in. Linux only.
 
 Or build from source, with cargo and rustc 1.85 or newer:
 

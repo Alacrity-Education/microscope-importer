@@ -19,9 +19,7 @@ Depends: ${shlibs:Depends},
          ${misc:Depends},
          ffmpeg,
          udisks2,
-         util-linux,
-         fontconfig
-Recommends: fonts-dejavu-core
+         util-linux
 Description: import footage from microscope SD cards and stitch video segments
  Microscope Importer is a terminal application that lists every SD card
  attached to the computer, mounted or not. Selecting a card imports all of

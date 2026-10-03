@@ -12,6 +12,12 @@ Comment: microscope-importer is a Rust program and the binary in this package
  the program itself, which is the licence the combined binary is distributed
  under.
 
+ .
+ The font of the note drawn over black filler, assets/DejaVuSans-Bold.ttf, is
+ compiled into the binary. It is DejaVu Sans Bold, under the Bitstream Vera
+ and Arev fonts licences; the terms are in assets/DejaVuSans-LICENSE.txt in
+ the source tree.
+
 Files: *
 Copyright: 2026 Alacrity-Education
 License: AGPL-3.0-or-later

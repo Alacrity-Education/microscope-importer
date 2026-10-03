@@ -3,9 +3,9 @@ microscope-importer for Debian
 
 The .deb carries one binary, /usr/bin/microscope-importer, with every crate
 it uses linked in statically, plus a desktop entry that opens it in a
-terminal. At run time it drives ffmpeg/ffprobe, udisksctl, lsblk and
-fc-match, which is why ffmpeg, udisks2, util-linux and fontconfig are
-dependencies.
+terminal. At run time it drives ffmpeg/ffprobe, udisksctl and lsblk, which
+is why ffmpeg, udisks2 and util-linux are dependencies. The font of the note
+on black filler (DejaVu Sans Bold) is compiled in.
 
 Building
 --------

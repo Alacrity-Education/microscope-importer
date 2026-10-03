@@ -71,14 +71,13 @@ jobs:
     steps:
       # git has to be there before actions/checkout, and makepkg needs its
       # dependencies installed beforehand: "makepkg -s" would call pacman
-      # through sudo from the unprivileged build user. makepkg also checks
-      # the runtime depends (ffmpeg, udisks2, fontconfig); ffmpeg doubles as
-      # the PKGBUILD's checkdepends. "rust" brings cargo and
-      # rustc, the PKGBUILD's makedepends.
+      # through sudo from the unprivileged build user. "rust" brings cargo and
+      # rustc, the PKGBUILD's makedepends; makepkg also checks the runtime
+      # depends (ffmpeg, udisks2), and ffmpeg doubles as the checkdepends.
       - name: Install the toolchain
         run: |
           pacman -Syu --noconfirm
-          pacman -S --noconfirm --needed git rust sudo ffmpeg udisks2 fontconfig github-cli
+          pacman -S --noconfirm --needed git rust sudo ffmpeg udisks2 github-cli
 
       - uses: actions/checkout@v4
 
